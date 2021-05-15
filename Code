@@ -1,0 +1,309 @@
+
+
+from sklearn.svm import LinearSVC,SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier,GradientBoostingClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+
+#regression
+from sklearn.linear_model import LinearRegression,Ridge,Lasso,RidgeCV,LogisticRegression
+from sklearn.ensemble import RandomForestRegressor,BaggingRegressor,GradientBoostingRegressor,AdaBoostRegressor
+from sklearn.svm import SVR
+from sklearn.neighbors import KNeighborsRegressor
+
+#model selection
+from sklearn.model_selection import train_test_split,cross_validate
+from sklearn.model_selection import KFold
+from sklearn.model_selection import GridSearchCV
+
+#evaluation metrics
+from sklearn.metrics import mean_squared_log_error,mean_squared_error, r2_score,mean_absolute_error # for regression
+from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score  # for classification
+
+from sklearn import model_selection, tree, preprocessing, metrics, linear_model
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LinearRegression, LogisticRegression, SGDClassifier
+from sklearn.tree import DecisionTreeClassifier
+from catboost import CatBoostClassifier, Pool, cv
+from sklearn.model_selection import cross_val_predict
+
+import datetime
+import catboost
+from catboost import CatBoostRegressor, Pool, cv
+import sklearn
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.metrics import accuracy_score
+
+from sklearn import model_selection, tree, preprocessing, metrics, linear_model
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LinearRegression, LogisticRegression, SGDClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import r2_score
+from sklearn.model_selection import GridSearchCV
+from sklearn import model_selection, preprocessing, feature_selection, ensemble, linear_model, metrics, decomposition
+import xgboost as xg
+from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import Lars
+from sklearn.linear_model import SGDRegressor
+from sklearn.linear_model import HuberRegressor
+from sklearn.linear_model import RANSACRegressor
+from sklearn import svm
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import BaggingRegressor
+from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import VotingRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
+from sklearn.linear_model import Lasso
+from sklearn.model_selection import KFold
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.neural_network import MLPRegressor
+from scipy import stats
+from sklearn.compose import TransformedTargetRegressor
+##
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.metrics import mean_absolute_error
+from sklearn.linear_model import PoissonRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.cluster import KMeans
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+##
+df_train = pd.read_csv('/home/taylan/Desktop/moskito/dengue_features_train.csv')
+df_test = pd.read_csv('/home/taylan/Desktop/moskito/dengue_features_test.csv')
+dl_train = pd.read_csv('/home/taylan/Desktop/moskito/dengue_labels_train.csv')
+submit = pd.read_csv('/home/taylan/Desktop/moskito/submission_format.csv')
+##
+
+##
+df = pd.merge(df_train,dl_train, on=['city','year','weekofyear'])
+df['week_start_date'] = pd.to_datetime(df['week_start_date'])
+df['month'] = df['week_start_date'].dt.month
+df['day'] = df['week_start_date'].dt.day
+df['city'] = df['city'].map({'sj':0,'iq':1})
+df.drop(['week_start_date'],1,inplace=True)
+#df.to_csv('/home/taylan/Desktop/moskito/forpycaret.csv')
+df_0 = df[df['city'] == 0]
+#df_0.drop(['city'],1,inplace=True)
+df_1 = df[df['city'] == 1]
+#df_1.drop(['city'],1,inplace=True)
+##
+def features(df):
+    df['week_start_date'] = pd.to_datetime(df['week_start_date'])
+    df['month'] = df['week_start_date'].dt.month
+    df['day'] = df['week_start_date'].dt.day
+    df['city'] = df['city'].map({'sj':0,'iq':1})
+    df.drop(['week_start_date'],1,inplace=True)
+    return df
+##
+from scipy.stats import shapiro, normaltest, chisquare
+df.fillna(inplace=True, method='bfill')
+def check_normality(df):
+    for col in df.columns:
+        sstat, sp = shapiro(df[col].values)
+        nstat, np = normaltest(df[col].values)
+        cstat, cp = chisquare(df[col].values)
+        print(col,sp,np,cp)
+        if (sp>0.05):
+            print('normal')
+        else:
+            print('not normal')
+check_normality(df)
+sns.distplot(df['station_min_temp_c'])
+
+##
+'''EDA'''
+df = df_0
+df[['ndvi_nw','ndvi_ne','ndvi_se','ndvi_sw']].plot(subplots=True)
+df.plot(subplots=True)
+df.iloc[:,2:10].plot(subplots=True, kind='hist')
+sns.pairplot(df.iloc[:,0:10])
+des = df.describe()
+corr = df.corr()
+sns.heatmap(corr, annot=True, cmap='rainbow')
+
+
+
+##
+def add_sct(df,cols):
+    d = {}
+    for col in cols:
+        d[col+'sin'] = np.sin(df[col])*2*np.pi/(df[col].nunique())
+        d[col+'cos'] = np.cos(df[col])*2*np.pi/(df[col].nunique())
+        d[col+'tan'] = np.tan(df[col])*2*np.pi/(df[col].nunique())
+
+    concat_data = pd.concat([df, pd.DataFrame(d)], axis=1)
+    return concat_data.drop(cols,1)
+
+d = add_sct(df,['month','weekofyear'])
+##
+def km(df,cols,n):
+    knn = KMeans(n_clusters=n, random_state=7)
+    knn.fit(df[cols].values.reshape((-1,1)))
+    labels = knn.labels_
+    df['labels for'+str(cols)] = labels
+    return df
+
+df_km = km(df,['day'],4)
+##
+def trans_target(df,model):
+    tt = TransformedTargetRegressor(regressor=model, func=np.log, inverse_func=np.exp)
+    tt.fit(X,y)
+    return tt
+##
+def scale(df, n_unique_threshold , scaler):
+    numeric_cols = []
+    for col in df.columns:
+        if (df[col].nunique()>n_unique_threshold)&((df[col].dtype==int)or(df[col].dtype==float)):
+            numeric_cols.append(col)
+    df_scaled = pd.DataFrame(scaler.fit_transform(df[numeric_cols]), columns=numeric_cols)
+    df_cat = df.drop(numeric_cols,1)
+    dff = pd.concat([df_cat,df_scaled],axis=1)
+    print(numeric_cols)
+    return dff
+df_sc = scale(df,100,StandardScaler())
+##
+'''MISSING VALS'''
+
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+
+def impute(df, strategy):
+    imp = IterativeImputer(max_iter=10, random_state=0)
+    if strategy=='imp':
+        X = imp.fit_transform(df)
+        dfimp = pd.DataFrame(X, columns=df.columns)
+    else:
+        dfimp = df.interpolate(method='linear')
+    #df.fillna(method='ffill',inplace=True)
+    return dfimp
+
+df = impute(df, 'imp')
+
+
+##
+
+#dfnan = df[df.isnull().any(axis=1)]
+
+
+##
+'''SPLIT'''
+#df.set_index('week_start_date', inplace=True)
+def split(df, target, test_size, timeseries=False):
+    X = df.drop([target],1)
+    y = df[target]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=7)
+    if timeseries==True:
+        X_train, y_train = X[:int(len(df)*(1-test_size))], y[:int(len(df)*(1-test_size))]
+        X_test, y_test = X[int(len(df) * (1 - test_size)):], y[int(len(df) * (1 - test_size)):]
+
+    return X_train, X_test, y_train, y_test
+
+X_train, X_test, y_train, y_test = split(df,'total_cases',0.2, timeseries=True, alldata=True)
+
+##
+'''ONE HOT ENCODE'''
+
+##
+dfcopy = df.copy()
+cat_var = ['city','weekofyear','month','day']
+df = impute(df,'imp')
+df_sc = scale(df.drop(['total_cases'],1), 60, StandardScaler())
+df = pd.get_dummies(data=df_sc, columns=cat_var)
+df['total_cases'] = dfcopy['total_cases']
+df_0 = df[df['city_0.0'] == 1]
+df_1 = df[df['city_1.0'] == 1]
+X_train_0, X_test_0, y_train_0, y_test_0, = split(df_0, 'total_cases', 0.2, timeseries=True)
+X_train_1, X_test_1, y_train_1, y_test_1, = split(df_1, 'total_cases', 0.2, timeseries=True)
+X_train = pd.concat((X_train_0, X_train_1), axis=0)
+X_test = pd.concat((X_test_0, X_test_1), axis=0)
+y_train = pd.concat((y_train_0, y_train_1), axis=0)
+y_test = pd.concat((y_test_0, y_test_1), axis=0)
+
+##
+'''fit'''
+from catboost import CatBoostRegressor
+cat = CatBoostRegressor(loss_function='MAE')
+cat_var = ['city','year','weekofyear','month','day']
+
+X_train[cat_var] = X_train[cat_var].astype(int)
+X_test[cat_var] = X_test[cat_var].astype(int)
+y_train = y_train.astype(int)
+y_test = y_test.astype(int)
+cat.fit(X_train,y_train,eval_set=(X_test,y_test), cat_features=cat_var)
+
+pred = cat.predict(X_test)
+print(mean_absolute_error(y_test, pred))
+
+pd.DataFrame(cat.feature_importances_,index=X_train.columns, columns=['importances']).sort_values(
+    by='importances',ascending=False)
+##
+from sklearn.linear_model import Lasso, Ridge
+las = Lasso()
+rid = Ridge()
+model = rid
+model.fit(X_train,y_train)
+pred = model.predict(X_test)
+print(mean_absolute_error(y_test,pred))
+pred = np.round(pred)
+pred = np.clip(pred,0,np.inf)
+print(mean_absolute_error(y_test,pred))
+##
+
+##
+from sklearn.linear_model import TweedieRegressor
+model = TweedieRegressor(power=(3),alpha=2,fit_intercept=True)
+model.fit(X_train.values,y_train.values)
+pred = model.predict(X_test)
+print(mean_absolute_error(y_test ,pred))
+pred = np.round(pred)
+pred = np.clip(pred,0,np.inf)
+print(mean_absolute_error(y_test,pred))
+
+##
+#(df_train['year']!=df_train['YEAR']).sum()
+
+##
+'''SUBMIT'''
+df_test['week_start_date'] = pd.to_datetime(df_test['week_start_date'])
+df_test['month'] = df_test['week_start_date'].dt.month
+df_test['day'] = df_test['week_start_date'].dt.day
+df_test['city'] = df_test['city'].map({'sj':0,'iq':1})
+df_test.drop(['week_start_date'],1,inplace=True)
+df_test = impute(df_test, 'imp')
+df_test_sc = scale(df_test, 54, StandardScaler())
+df_test = pd.get_dummies(data=df_test_sc, columns=cat_var)
+
+#df_test.fillna(method='ffill',inplace=True)
+##
+target = 'total_cases'
+X = df.drop([target], 1)
+y = df[target]
+model = Ridge()
+model.fit(X,y)
+sub = model.predict(df_test)
+sub = np.round(sub)
+sub = np.clip(sub,0,np.inf)
+plt.plot(sub)
+##
+submit.set_index('city', inplace=True)
+submit['total_cases'] = sub.astype(int)
+submit.to_csv('/home/taylan/Desktop/moskito/ridge.csv')
