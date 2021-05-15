@@ -1,0 +1,120 @@
+from keras.models import Sequential
+from keras.layers import LSTM, Dense,Dropout,RepeatVector, TimeDistributed, SimpleRNN
+from keras.models import load_model
+from math import sqrt
+from pandas import read_csv
+from sklearn.metrics import mean_squared_error
+from matplotlib import pyplot
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from keras.layers import RepeatVector
+from keras.layers import TimeDistributed
+from keras.layers import Conv1D, MaxPooling1D, Flatten, ConvLSTM2D
+from keras_self_attention import SeqSelfAttention
+import keras.backend as K
+from keras.wrappers.scikit_learn import KerasRegressor
+from scipy.stats.stats import pearsonr
+from keras.callbacks import LearningRateScheduler
+from keras.callbacks import History
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+#model selection
+from sklearn.model_selection import train_test_split,cross_validate
+from sklearn.model_selection import KFold
+from sklearn.model_selection import GridSearchCV
+
+#evaluation metrics
+from sklearn.metrics import mean_squared_log_error,mean_squared_error, r2_score,mean_absolute_error # for regression
+from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score  # for classification
+
+from sklearn.model_selection import cross_val_predict
+
+import datetime
+import catboost
+from catboost import CatBoostRegressor, Pool, cv
+import sklearn
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+from sklearn.metrics import r2_score
+from sklearn.model_selection import GridSearchCV
+from sklearn import model_selection, preprocessing, feature_selection, ensemble, linear_model, metrics, decomposition
+
+##
+df = pd.read_excel('/home/taylan/Desktop/JUPYTER/data.xlsx')
+idx = pd.read_excel('/home/taylan/Desktop/JUPYTER/id.xlsx')
+submit = pd.read_csv('/home/taylan/Desktop/JUPYTER/sample_submission.csv')
+##
+df['year'] = df['date'].str.split('-').map(lambda x: x[0])
+df['month'] = df['date'].str.split('-').map(lambda x: x[1])
+df['year'] = df['year'].astype(int)
+df['month'] = df['month'].astype(int)
+df.drop(['date'],1,inplace=True)
+df['customer'] = df['customer'].map({'A':1,'B':2,'C':3})
+df['customer'] = df['customer'].astype('int')
+df['season'] = df['month']%12 // 3 + 1
+#plt.hist(df['order'], bins=10)
+#sns.distplot(df['order'])
+#sns.boxplot(x=df['order'])
+df['order'] = df.groupby(['customer','item','year','month','season'])['order'].transform('sum')
+df = df.drop_duplicates(subset=['customer','item','year','month','season'])
+df['year'] = df['year']-2017
+df['periodic_month'] = np.cos((df['month']-1)*(np.pi/6))
+##
+idx['year'] = idx['date'].str.split('-').map(lambda x: x[0])
+idx['month'] = idx['date'].str.split('-').map(lambda x: x[1])
+idx['year'] = idx['year'].astype(int)
+idx['month'] = idx['month'].astype(int)
+idx.drop(['date'],1,inplace=True)
+idx['customer'] = idx['customer'].map({'A':1,'B':2,'C':3})
+idx['customer'] = idx['customer'].astype('int')
+idx.set_index('id',inplace=True)
+idx['season'] = idx['month']%12 // 3 + 1
+#idx['month'] = np.sin(idx['month'])
+idx['year'] = idx['year']-2017
+idx['periodic_month'] = np.cos((idx['month']-1)*(np.pi/6))
+
+##
+X = df.drop(['order'],1)
+y = df['order']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7)
+##
+sc = MinMaxScaler(feature_range=(0,1))
+X_train_sc = sc.fit_transform(X_train)
+#X_train_sc = X_train_sc.reshape((-1,1))
+X_test_sc = sc.transform(X_test)
+#X_test_sc = X_test_sc.reshape((-1,1))
+##
+model = Sequential()
+model.add(Dense(5000,input_dim=X_train.shape[1],activation='relu')), #,input_shape=(n_timesteps,n_features),kernel_regularizer=keras.regularizers.l2(0.0005)))
+#model.add(Dense(5,activation='relu')), #,kernel_regularizer=keras.regularizers.l2(1e-2)))
+#model.add(Dense(5,activation='relu')),
+model.add(Dense(1)),
+model.compile(loss= 'mse' , optimizer= 'adam',  metrics=['mse'])
+model.fit(X_train_sc,y_train, epochs=10)
+#score = model.evaluate(X_test, y_test, batch_size=32)
+#loss_history = History()
+#lr_rate = LearningRateScheduler(exp_decay)
+#e_s = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=5)
+#callbacks_list = [loss_history, e_s, lr_rate]
+##
+pred = model.predict(X_test_sc)
+
+##
+submission = model.predict(idx)
+final_sub = submit
+final_sub['order'] = submission
+final_sub.set_index('id',inplace=True)
+##
